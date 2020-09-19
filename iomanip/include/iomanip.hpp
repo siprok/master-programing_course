@@ -17,22 +17,29 @@ std::ostream &endm(std::ostream &arg_ss);
 class SQ_proxy 
 {
 private:
+	SQ_proxy *head;
 	std::ostream *stream;
 public:
 	SQ_proxy(std::ostream&);
+	SQ_proxy(SQ_proxy &source_proxy);
+	SQ_proxy(const SQ_proxy &source_proxy);
 	
 	friend SQ_proxy& operator<<(std::ostream &stream, SQ_proxy& (*manip)(std::ostream&));
 
 	template<typename T>
 	friend std::ostream& operator<<(SQ_proxy& sq_proxy, const T &mes)
 	{
-		return  *(sq_proxy.stream) << "[" << mes << "]";
+		std::ostream *stream_buf = sq_proxy.stream;
+		delete sq_proxy.head;
+		return  *stream_buf << "[" << mes << "]";
 	}
 
 	template<typename T>
 	friend std::ostream& operator<<(SQ_proxy& sq_proxy, T &mes)
 	{
-		return  *(sq_proxy.stream) << "[" << mes << "]";
+		std::ostream *stream_buf = sq_proxy.stream;
+		delete sq_proxy.head;
+		return  *stream_buf << "[" << mes << "]";
 	}
 };
 SQ_proxy &squares(std::ostream&);
