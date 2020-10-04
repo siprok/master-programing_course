@@ -9,6 +9,7 @@
 
 #include <mutex>
 
+
 template<class T>
 class ptr_holder
 {
@@ -16,19 +17,23 @@ public:
     ptr_holder(T* ptr): ptr_(ptr) {}
 
     //{ describe proxy object
-    class proxy: private ???
+    class proxy: private T
     {
     public:
-        proxy(???): ???
-        {}
+        proxy(const T &ob): T(const &ob){}
 
+		T* operator -> () const
+		{
+			return &(this->proxy_ob);
+		}
     private:
-        ???
+		T proxy_ob;
+
     };
 
-    ??? operator -> () const
+	ptr_holder<T>::proxy operator -> () const
     {
-        return ???;
+        return ptr_holder<T>::proxy(ptr_);
     }
     //}
 
