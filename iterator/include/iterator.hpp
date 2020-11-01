@@ -21,16 +21,16 @@ class image_iterator : public boost::iterator_adaptor<image_iterator<Iterator>, 
 public:
 	image_iterator() : image_iterator::iterator_adaptor_(0) {}
 
-	explicit image_iterator(Iterator p) : image_iterator::iterator_adaptor_(p), width_(0), stride_(0), index_(0), delta_(stride_ - width_) {}
+	explicit image_iterator(Iterator p) : image_iterator::iterator_adaptor_(p), init_it(p), width(0), stride(0), delta(stride - width) {}
 
-	explicit image_iterator(Iterator p, size_t width, size_t stride, size_t index) : image_iterator::iterator_adaptor_(p), width_(width), stride_(stride), index_(index), delta_(stride_ - width_) {}
-	//image_iterator(Iterator it, size_t width, size_t stride) : boost::iterator_adaptor<Iterator, uint8_t>(it), width_(width), stride_(stride) {}
+	explicit image_iterator(Iterator p, size_t width_, size_t stride_) : image_iterator::iterator_adaptor_(p), init_it(p), width(width_), stride(stride_), delta(stride_ - width_) {}
+	
 private:
 	friend class boost::iterator_core_access;
-	size_t width_;
-	size_t stride_;
-	size_t index_;
-	size_t delta_;
+	Iterator init_it;
+	size_t width;
+	size_t stride;
+	size_t delta;
 
 	auto& dereference() const
 	{
@@ -45,23 +45,20 @@ private:
 	void increment()
 	{
 		this->base_reference()++;
-		index_++;
-		if (index_ % stride_ == width_)
-		{
-			index_ += delta_;
-			this->base_reference() += delta_;
-		}
+		bool condition_1 = (std::distance(this->base(), init_it) % stride == delta) & (std::distance(this->base(), init_it) > 0);
+		bool condition_2 = (std::distance(init_it, this->base()) % stride == width) & (std::distance(init_it, this->base()) > 0);
+		if (condition_1 || condition_2)
+			this->base_reference() += delta;		
+
 	}
 
 	void decrement()
 	{
 		this->base_reference()--;
-		if (index_ % stride_ == 0)
-		{
-			index_ -= delta_;
-			this->base_reference() -= delta_;
-		}
-		index_--;
+		bool condition_1 = (std::distance(this->base(), init_it) % stride == 1) & (std::distance(this->base(), init_it) > 0);
+		bool condition_2 = (std::distance(init_it, this->base()) % stride == width) & (std::distance(init_it, this->base()) > 0);
+		if (condition_1 || condition_2)
+			this->base_reference() -= delta;
 	}
 
 	void advance(int n)
@@ -81,12 +78,40 @@ private:
 	template <class OtherDerived, class OtherIterator, class V, class C, class R, class D>
 	ptrdiff_t distance_to(boost::iterator_adaptor<OtherDerived, OtherIterator, V, C, R, D> const& y) const
 	{
+		ptrdiff_t this_d, this_row, this_column, outer_d, outer_row, outer_column, between_d, rows, columns, addition;
 		auto it = (image_iterator<Iterator> const&)y;
-		ptrdiff_t row1 = index_ / stride_;
-		ptrdiff_t column1 = index_ % stride_;
-		ptrdiff_t row2 = it.index_ / stride_;
-		ptrdiff_t column2 = it.index_ % stride_;
-		return (row2 * width_ + column2) - (row1 * width_ + column1);
+		addition = 0;
+		between_d = std::distance(this->init_it, it.init_it);
+		rows = std::abs(between_d) / stride;
+		columns = between_d == 0 ? 0 : stride;
+		this_d = std::distance(this->init_it, this->base());
+		outer_d = std::distance(it.init_it, it.base());
+		if (between_d != 0)
+		{
+			if (this_d == 0 && outer_d == 0)
+				return between_d / std::abs(between_d) * rows * width;
+			addition = between_d / std::abs(between_d) * rows * width;
+
+		}
+		if (this_d < 0)
+		{
+			this_d = std::abs(this_d);
+			this_row = rows - this_d / stride;
+			this_column = columns - this_d % stride;
+		}
+		this_row = this_d / stride;
+		this_column = this_d % stride;
+
+		if(outer_d < 0)
+		{
+			outer_d = std::abs(outer_d);
+			outer_row = rows - outer_d / stride;
+			outer_column = columns - outer_d % stride;				
+		}
+		outer_row = outer_d / stride;
+		outer_column = outer_d % stride;
+			
+		return addition + (outer_row * width + outer_column) - (this_row * width + this_column);		
 	}
 public:
 
@@ -105,22 +130,22 @@ public:
 
 	auto begin()
 	{
-		return image_iterator(data.begin(), width_, stride_, 0);
+		return image_iterator(data.begin(), width_, stride_);
 	}
 
 	auto end()
 	{
-		return image_iterator(data.end(), width_, stride_, data.size());
+		return image_iterator(data.end(), width_, stride_);
 	}
 
 	auto begin() const
 	{
-		return image_iterator(data.begin(), width_, stride_, 0);
+		return image_iterator(data.begin(), width_, stride_);
 	}
 
 	auto end() const
 	{
-		return image_iterator(data.end(), width_, stride_, data.size());
+		return image_iterator(data.end(), width_, stride_);
 	}
 
 private:
