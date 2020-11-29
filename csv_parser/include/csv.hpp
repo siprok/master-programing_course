@@ -25,7 +25,7 @@
  * CSV (comma separated value) EBNF specification (http://www.rfc-editor.org/rfc/rfc4180.txt)
  *      string := [^,\n]+
  *      quoted_string := " [^"]* "
- *      cell := quated_string | string
+ *      cell := quoted_string | string
  *      row := cell (, cell)* \n
  *      header := row
  *      csv := header row*
@@ -37,7 +37,7 @@ namespace types
     {
         //? Which kind of types should I use to describe the CSV type?
         //{
-        ... csv = ...
+        using csv = std::vector<std::vector<std::string>>;
         //}
     }
 }
@@ -51,15 +51,15 @@ namespace parser
         namespace x3 = boost::spirit::x3;
 
         //{ csv grammar
-        ... string = ...
-        ... cell = ...
-                 = ...
+        auto string = x3::no_skip[*x3::lit(' ') >> x3::alnum >> *(x3::blank | x3::alnum)];
+        auto cell = x3::rule<class cell, std::string> {}
+                  = quoted_string | string;
 
-        ... row = ...
-                = ...
+        auto row = x3::rule<class row, std::vector<std::string>> {}
+                 = cell % ',';
 
-        ... csv = ...
-                = ...
+        auto csv = x3::rule<class csv, types::csv::csv> {}
+                 = *(row >> x3::no_skip["\n"]);
         //}
     }
 }
@@ -69,9 +69,9 @@ namespace literals
     namespace csv
     {
         //{ declare ``_csv`` literal
-        ... _csv ..
+        types::csv::csv operator "" _csv(const char *s, std::size_t)
         {
-
+            return parser::load_from_string<types::csv::csv>(s, parser::csv::csv);
         }
         //}
     }
